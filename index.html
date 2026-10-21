@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Naga Adithya — Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=IBM+Plex+Mono:ital,wght@0,300;0,400;1,300&family=Caveat:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg:#0B0B09;--surface:#111109;--text:#EDE8D8;--text-dim:rgba(237,232,216,0.5);
+      --cyan:#C4501A;--cyan-dim:rgba(196,80,26,0.12);--accent:#C4501A;
+      --rule:rgba(237,232,216,0.1);--rule-bright:rgba(237,232,216,0.2);
+      --grid:rgba(237,232,216,0.04);
+      --serif:'Playfair Display','Georgia',serif;
+      --mono:'IBM Plex Mono','Courier New',monospace;
+      --display:'Playfair Display','Georgia',serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:var(--serif);overflow-x:hidden;cursor:crosshair}
+    ::selection{background:var(--cyan);color:var(--bg)}
+    ::-webkit-scrollbar{width:2px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--cyan)}
+    a{color:inherit;text-decoration:none}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.38;background-image:radial-gradient(circle,rgba(196,80,26,0.12) 1px,transparent 1px);background-size:40px 40px}
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;padding:1.2rem 3rem;background:rgba(11,11,9,0.85);backdrop-filter:blur(16px);border-bottom:0.5px solid var(--rule)}
+    nav::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),transparent 40%,transparent 60%,var(--cyan));opacity:0.35}
+    .nav-logo{font-family:var(--mono);font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--text);opacity:0.6;transition:opacity 0.3s}
+    .nav-logo:hover{opacity:1}
+    .nav-links{display:flex;gap:2.5rem;list-style:none}
+    .nav-links a{font-family:var(--mono);font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text);opacity:0.4;transition:opacity 0.3s,color 0.3s;display:flex;align-items:center;gap:0.4rem}
+    .nav-links a:hover,.nav-links a.active{opacity:1;color:var(--cyan)}
+    .nav-dot{width:4px;height:4px;border-radius:50%;background:var(--cyan);opacity:0;transition:opacity 0.3s}
+    .nav-links a.active .nav-dot{opacity:1}
+    /* SHARED */
+    .sw{position:relative;z-index:1;padding:7rem 3rem 5rem;min-height:100vh}
+    .bp-grid{position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:80px 80px}
+    .bp-grid::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(237,232,216,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(237,232,216,0.1) 1px,transparent 1px);background-size:320px 320px}
+    .s-label{display:inline-flex;align-items:center;gap:0.8rem;font-family:var(--mono);font-size:0.55rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--cyan);margin-bottom:2.5rem}
+    .s-label-num{width:1.6rem;height:1.6rem;border-radius:50%;border:0.5px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:var(--cyan)}
+    .s-label::after{content:'';flex:1;min-width:3rem;height:0.5px;background:linear-gradient(90deg,var(--cyan),transparent)}
+    [data-r]{opacity:0;transform:translateY(2rem);transition:opacity 0.95s cubic-bezier(0.22,1,0.36,1),transform 0.95s cubic-bezier(0.22,1,0.36,1)}
+    [data-r].vis{opacity:1;transform:none}
+    [data-d="1"]{transition-delay:0.08s}[data-d="2"]{transition-delay:0.18s}[data-d="3"]{transition-delay:0.3s}[data-d="4"]{transition-delay:0.42s}[data-d="5"]{transition-delay:0.56s}[data-d="6"]{transition-delay:0.7s}
+    .h-rule{width:100%;height:0.5px;background:var(--rule)}
+    .corner-tl,.corner-br{position:absolute;width:1.5rem;height:1.5rem;border-color:rgba(196,80,26,0.2);border-style:solid}
+    .corner-tl{top:1rem;left:1rem;border-width:0.5px 0 0 0.5px}.corner-br{bottom:1rem;right:1rem;border-width:0 0.5px 0.5px 0}
+    /* HERO */
+    #hero{min-height:100vh;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:0 3rem 5.5rem}
+    .hero-bp{position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:80px 80px}
+    .hero-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 55% at 60% 50%,rgba(237,232,216,0.06) 0%,transparent 70%)}
+    .hero-ghost{position:absolute;right:-2rem;top:50%;transform:translateY(-52%);font-family:var(--display);font-size:clamp(18rem,35vw,40rem);line-height:1;color:transparent;-webkit-text-stroke:0.5px rgba(237,232,216,0.04);pointer-events:none;user-select:none;animation:gFloat 9s ease-in-out infinite}
+    @keyframes gFloat{0%,100%{transform:translateY(-52%)}50%{transform:translateY(-48%)}}
+    .hero-scan{position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(196,80,26,0.6),transparent);opacity:0.4;animation:scan 6s linear infinite}
+    @keyframes scan{from{top:0;opacity:0}10%{opacity:0.3}90%{opacity:0.3}to{top:100%;opacity:0}}
+    .hero-eyebrow{font-family:var(--mono);font-size:0.58rem;letter-spacing:0.35em;text-transform:uppercase;color:var(--cyan);opacity:0.65;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;position:relative;z-index:2}
+    .hero-eyebrow::before{content:'';width:1.5rem;height:0.5px;background:var(--cyan)}
+    h1.hero-name{font-family:var(--display);font-size:clamp(5rem,14vw,13rem);line-height:0.88;letter-spacing:0.04em;text-transform:uppercase;color:#EDE8D8;margin-bottom:0.5rem;position:relative;z-index:2;text-shadow:0 2px 40px rgba(0,0,0,0.8)}
+    h1.hero-name .accent{color:#C4501A}
+    .hero-sub{font-family:var(--serif);font-size:clamp(0.9rem,1.6vw,1.2rem);font-weight:300;font-style:italic;color:var(--text-dim);line-height:1.75;max-width:46ch;margin-top:1.5rem;margin-bottom:2.8rem;position:relative;z-index:2}
+    .hero-row{display:flex;gap:4rem;align-items:flex-end;flex-wrap:wrap;position:relative;z-index:2}
+    .hero-meta{display:flex;gap:3rem}.meta-item{display:flex;flex-direction:column;gap:0.3rem}
+    .meta-k{font-family:var(--mono);font-size:0.48rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--cyan);opacity:0.5}
+    .meta-v{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.06em;color:var(--text);opacity:0.8}
+    .cta-btn{margin-left:auto;display:inline-flex;align-items:center;gap:0.8rem;border:0.5px solid var(--rule-bright);padding:0.8rem 1.8rem;font-family:var(--mono);font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--cyan);position:relative;overflow:hidden;transition:border-color 0.35s}
+    .cta-btn::before{content:'';position:absolute;inset:0;background:var(--cyan-dim);transform:translateX(-100%);transition:transform 0.4s cubic-bezier(0.22,1,0.36,1)}
+    .cta-btn:hover{border-color:var(--cyan)}.cta-btn:hover::before{transform:translateX(0)}
+    .cta-btn span,.cta-arr{position:relative;z-index:1}.cta-btn:hover .cta-arr{transform:translateX(5px);transition:transform 0.35s}
+    .hero-scroll{position:absolute;bottom:2.5rem;right:3rem;display:flex;flex-direction:column;align-items:center;gap:0.5rem}
+    .hero-scroll p{font-family:var(--mono);font-size:0.48rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--cyan);opacity:0.3;writing-mode:vertical-rl}
+    .s-line{width:0.5px;height:3.5rem;overflow:hidden;position:relative}
+    .s-line::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent,var(--cyan));animation:sLine 2.2s ease-in-out infinite}
+    @keyframes sLine{0%{transform:translateY(-100%);opacity:0}30%{opacity:1}100%{transform:translateY(100%);opacity:0}}
+    /* MARQUEE */
+    .marquee-wrap{position:relative;z-index:1;border-top:0.5px solid var(--rule);border-bottom:0.5px solid var(--rule);overflow:hidden;padding:0.8rem 0;background:rgba(7,22,40,0.8)}
+    .marquee-track{display:flex;width:max-content;animation:mq 22s linear infinite}
+    .marquee-track:hover{animation-play-state:paused}
+    .marquee-item{font-family:var(--mono);font-size:0.58rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--text);opacity:0.22;padding:0 2.5rem;white-space:nowrap}
+    .marquee-item .dot{color:var(--cyan);opacity:0.8;margin:0 0.8rem}
+    @keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    /* MANIFESTO */
+    #manifesto{background:var(--surface)}
+    .mani-grid{display:grid;grid-template-columns:260px 1fr;gap:6rem;align-items:start}
+    .mani-side{position:sticky;top:7rem}
+    .mani-h2{font-family:var(--display);font-size:clamp(2.8rem,5.5vw,5.5rem);line-height:0.9;letter-spacing:0.06em;text-transform:uppercase;color:var(--text)}
+    .mani-h2 .ac{color:var(--cyan)}
+    .mani-index{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;color:var(--cyan);opacity:0.3;margin-top:2.5rem}
+    .mani-aside{margin-top:2rem;padding:1rem;border:0.5px solid var(--rule);background:var(--cyan-dim);position:relative}
+    .mani-aside::before{content:'NOTE';position:absolute;top:-0.6rem;left:1rem;font-family:var(--mono);font-size:0.45rem;letter-spacing:0.2em;color:var(--cyan);background:var(--surface);padding:0 0.4rem}
+    .mani-aside p{font-family:var(--mono);font-size:0.6rem;letter-spacing:0.08em;color:var(--cyan);opacity:0.6;line-height:1.7}
+    .mani-body p{font-size:clamp(0.88rem,1.3vw,1.08rem);line-height:1.85;font-weight:400;font-family:'Playfair Display',serif;color:var(--text);opacity:0.72;margin-bottom:1.4rem}
+    .mani-body p.lead{font-size:clamp(1.1rem,1.7vw,1.4rem);font-style:italic;font-family:'Playfair Display',serif;opacity:1;line-height:1.6}
+    .mani-quote{border-left:1.5px solid var(--accent);padding-left:2rem;margin:2.5rem 0;font-style:italic;font-size:clamp(0.9rem,1.3vw,1.1rem);opacity:0.6;line-height:1.7;position:relative}
+    .mani-quote::before{content:'"';position:absolute;top:-1rem;left:1.5rem;font-size:4rem;color:var(--cyan);opacity:0.15;font-family:var(--serif);line-height:1}
+    .mani-quote cite{display:block;margin-top:0.8rem;font-family:var(--mono);font-size:0.52rem;letter-spacing:0.18em;color:var(--cyan);opacity:0.5;font-style:normal;text-transform:uppercase}
+    /* WORKS */
+    #works{overflow:hidden}
+    .works-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3.5rem;flex-wrap:wrap;gap:1rem}
+    .works-h2{font-family:var(--display);font-size:clamp(3.5rem,8vw,8rem);line-height:0.85;letter-spacing:-0.02em;text-transform:none;color:var(--text)}
+    .works-h2 .ac{color:var(--cyan)}
+    .works-count{font-family:var(--mono);font-size:0.58rem;letter-spacing:0.2em;color:var(--cyan);opacity:0.3;text-align:right;line-height:1.8}
+    .feat-proj{position:relative;width:100%;aspect-ratio:16/7;overflow:hidden;cursor:pointer;margin-bottom:28px;background:#000;padding:10px}
+    .feat-proj::before{content:'';position:absolute;inset:0;border:1px solid rgba(255,255,255,0.09);z-index:10;pointer-events:none}
+    .feat-proj:hover::before{border-color:rgba(255,255,255,0.18)}
+    .feat-img{width:100%;height:100%;position:relative;transition:transform 0.9s cubic-bezier(0.22,1,0.36,1);background-color:#000;background-size:contain;background-repeat:no-repeat;background-position:center}
+    .feat-proj:hover .feat-img{transform:scale(1.01)}
+    .feat-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(11,11,9,0.95) 0%,rgba(11,11,9,0.1) 55%,transparent 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:2.5rem 3rem;transition:background 0.5s}
+    .feat-tag{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--cyan);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem}
+    .feat-tag::before{content:'';width:1.5rem;height:0.5px;background:var(--cyan)}
+    .feat-title{font-family:var(--display);font-size:clamp(2rem,5vw,4.2rem);line-height:0.92;letter-spacing:-0.01em;text-transform:none;color:var(--text);margin-bottom:1rem}
+    .feat-title .ac{color:var(--cyan)}
+    .feat-meta-row{display:flex;gap:3rem;align-items:center}
+    .feat-year{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.2em;color:var(--text);opacity:0.3}
+    .feat-desc{font-size:0.95rem;font-style:italic;font-weight:300;color:var(--text-dim);max-width:50ch;line-height:1.65;opacity:0;transform:translateY(0.5rem);transition:opacity 0.45s,transform 0.45s}
+    .feat-proj:hover .feat-desc{opacity:1;transform:none}
+    .feat-arrow{margin-left:auto;width:2.8rem;height:2.8rem;border:0.5px solid rgba(196,80,26,0.25);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.75rem;color:var(--cyan);transition:border-color 0.35s,background 0.35s,transform 0.35s}
+    .feat-proj:hover .feat-arrow{border-color:var(--cyan);background:var(--cyan-dim);transform:rotate(45deg)}
+    .feat-num{position:absolute;top:1.5rem;right:2rem;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;color:var(--cyan);opacity:0.25}
+    .proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:24px}
+    .proj-card{position:relative;aspect-ratio:3/4;cursor:pointer;border:none;background:#000;padding:10px;overflow:hidden}
+    .proj-card::before{content:'';position:absolute;inset:0;border:1px solid rgba(255,255,255,0.09);z-index:5;pointer-events:none}
+    .proj-card:hover::before{border-color:rgba(255,255,255,0.18)}
+    .proj-img{width:100%;height:100%;transition:transform 0.8s cubic-bezier(0.22,1,0.36,1);position:relative;background-color:#000;background-size:contain;background-repeat:no-repeat;background-position:center}
+    .proj-card:hover .proj-img{transform:scale(1.02)}
+    .proj-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(11,11,9,0.96) 0%,rgba(11,11,9,0.05) 55%,transparent 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:1.6rem}
+    .proj-num{position:absolute;top:1rem;left:1.2rem;font-family:var(--mono);font-size:0.48rem;letter-spacing:0.2em;color:var(--cyan);opacity:0.25}
+    .proj-tag{font-family:var(--mono);font-size:0.48rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:0.5rem}
+    .proj-title{font-family:var(--display);font-size:clamp(1.15rem,2vw,1.7rem);line-height:1;letter-spacing:-0.01em;text-transform:none;color:var(--text);margin-bottom:0.6rem}
+    .proj-title .ac{color:var(--cyan)}
+    .proj-desc{font-size:0.82rem;font-style:italic;font-weight:300;line-height:1.6;color:var(--text-dim);opacity:0;max-height:0;overflow:hidden;transition:opacity 0.4s,max-height 0.4s}
+    .proj-card:hover .proj-desc{opacity:1;max-height:6rem}
+    .proj-detail{display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem}
+    .proj-year{font-family:var(--mono);font-size:0.48rem;letter-spacing:0.18em;color:var(--text);opacity:0.25}
+    .proj-link{font-family:var(--mono);font-size:0.48rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--cyan);opacity:0;transition:opacity 0.35s}
+    .proj-card:hover .proj-link{opacity:1}
+    .works-footer{display:flex;justify-content:space-between;align-items:center;padding:2.5rem 0;border-top:0.5px solid var(--rule);margin-top:28px}
+    .works-footer p{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.2em;color:var(--text);opacity:0.22;text-transform:uppercase}
+    .works-footer a{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--cyan);display:flex;align-items:center;gap:0.5rem;transition:opacity 0.3s}
+    .works-footer a:hover{opacity:0.7}
+    /* FILM */
+    #film{background:var(--surface)}
+    .film-split{display:grid;grid-template-columns:1.2fr 1fr;gap:5rem;align-items:center}
+    .film-left h2{font-family:var(--display);font-size:clamp(2.5rem,5.5vw,5.2rem);line-height:0.9;letter-spacing:-0.01em;text-transform:none;color:var(--text);margin-bottom:1.5rem}
+    .film-left h2 .ac{color:var(--cyan)}
+    .film-left p{font-size:1rem;font-style:italic;font-weight:300;color:var(--text-dim);line-height:1.75;max-width:30ch;margin-bottom:2rem}
+    .film-info{display:flex;flex-direction:column;gap:0.7rem}
+    .film-info-row{display:flex;gap:1rem;font-family:var(--mono);font-size:0.55rem;letter-spacing:0.13em}
+    .fi-key{color:var(--cyan);opacity:0.4;min-width:5rem;text-transform:uppercase}.fi-val{color:var(--text);opacity:0.55}
+    .film-right{position:relative}
+    .film-right::before,.film-right::after{content:'';position:absolute;width:1.5rem;height:1.5rem;border-color:rgba(196,80,26,0.25);border-style:solid}
+    .film-right::before{top:-1rem;left:-1rem;border-width:0.5px 0 0 0.5px}.film-right::after{bottom:-1rem;right:-1rem;border-width:0 0.5px 0.5px 0}
+    .video-box{position:relative;overflow:hidden;background:#0D0D0A;border:0.5px solid var(--rule);max-width:380px;margin:0 auto}
+    .video-box::before{content:'';display:block;padding-top:177.78%}
+    /* CONTACT */
+    #contact{border-top:0.5px solid var(--rule)}
+    .contact-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:6rem;align-items:start}
+    .contact-h2{font-family:var(--display);font-size:clamp(3.5rem,7.5vw,7rem);line-height:0.88;letter-spacing:-0.02em;text-transform:none;color:var(--text);margin-bottom:1.8rem}
+    .contact-h2 .ac{color:var(--cyan)}
+    .contact-tagline{font-size:1.05rem;font-style:italic;font-weight:300;color:var(--text-dim);line-height:1.75;max-width:38ch}
+    .dl-head{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--cyan);opacity:0.4;margin-bottom:1.2rem}
+    .dl-list{border-top:0.5px solid var(--rule)}
+    .dl-row{display:flex;justify-content:space-between;align-items:center;padding:1.3rem 0;border-bottom:0.5px solid var(--rule);color:var(--text);transition:padding-left 0.4s,background 0.3s}
+    .dl-row:hover{padding-left:0.8rem;background:var(--cyan-dim)}
+    .dl-row:hover .dl-arr{opacity:1;transform:none}
+    .dl-name{font-family:var(--serif);font-size:1rem;font-weight:300}
+    .dl-right{display:flex;align-items:center;gap:1.5rem}
+    .dl-fmt{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text);opacity:0.2}
+    .dl-arr{font-family:var(--mono);font-size:0.75rem;color:var(--cyan);opacity:0;transform:translateY(3px);transition:opacity 0.35s,transform 0.35s}
+    .socials{margin-top:2.5rem}.social-row{display:flex;flex-wrap:wrap;gap:0.8rem}
+    .soc-link{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);opacity:0.4;border:0.5px solid rgba(196,80,26,0.15);padding:0.5rem 1.1rem;transition:opacity 0.3s,border-color 0.3s,background 0.3s}
+    .soc-link:hover{opacity:1;border-color:var(--cyan);background:var(--cyan-dim)}
+    /* FOOTER */
+    footer{position:relative;z-index:1;border-top:0.5px solid var(--rule);padding:1.8rem 3rem;display:flex;justify-content:space-between;align-items:center;background:var(--surface)}
+    footer p{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--text);opacity:0.18}
+    .footer-diamond{width:6px;height:6px;background:var(--cyan);opacity:0.3;transform:rotate(45deg)}
+    /* MODAL */
+    .proj-modal{position:fixed;inset:0;z-index:500;display:flex;align-items:stretch;pointer-events:none;visibility:hidden}
+    .proj-modal.open{pointer-events:all;visibility:visible}
+    .modal-backdrop{position:absolute;inset:0;background:rgba(4,8,16,0.75);backdrop-filter:blur(8px);opacity:0;transition:opacity 0.5s}
+    .proj-modal.open .modal-backdrop{opacity:1}
+    .modal-panel{position:relative;margin-left:auto;width:min(860px,100vw);height:100vh;overflow-y:auto;background:var(--bg);border-left:0.5px solid var(--rule-bright);transform:translateX(100%);transition:transform 0.65s cubic-bezier(0.22,1,0.36,1);display:flex;flex-direction:column}
+    .proj-modal.open .modal-panel{transform:translateX(0)}
+    .modal-bar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:1.2rem 2.5rem;background:rgba(11,11,9,0.92);backdrop-filter:blur(14px);border-bottom:0.5px solid var(--rule)}
+    .modal-bar-label{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--cyan);opacity:0.8}
+    .modal-close{width:2.4rem;height:2.4rem;border:0.5px solid var(--rule-bright);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:1.1rem;transition:border-color 0.3s,background 0.3s,transform 0.3s}
+    .modal-close:hover{border-color:var(--accent);background:rgba(196,80,26,0.1);transform:rotate(90deg)}
+    .modal-hero{width:100%;aspect-ratio:16/9;background:#0D0D0A;position:relative;overflow:hidden;flex-shrink:0}
+    .modal-hero img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
+    .modal-hero-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+    .modal-hero-placeholder p{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;opacity:0.15;text-align:center;padding:2rem}
+    .modal-body{padding:2.5rem;flex:1}
+    .modal-tag{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--cyan);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem}
+    .modal-tag::before{content:'';width:1.5rem;height:0.5px;background:var(--cyan)}
+    .modal-title{font-size:clamp(2rem,5vw,3.5rem);font-weight:500;font-family:'Playfair Display',serif;line-height:1;letter-spacing:-0.01em;margin-bottom:2rem}
+    .modal-title em{font-style:italic;color:var(--cyan)}
+    .modal-specs{display:grid;grid-template-columns:repeat(3,1fr);border-top:0.5px solid var(--rule);margin-bottom:2.5rem}
+    .modal-spec{padding:1.2rem 1.5rem 1.2rem 0;border-right:0.5px solid var(--rule);border-bottom:0.5px solid var(--rule)}
+    .modal-spec:last-child{border-right:none}
+    .spec-k{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.3;margin-bottom:0.4rem}
+    .spec-v{font-size:0.9rem;font-weight:300;opacity:0.85}
+    .modal-desc{font-size:clamp(0.95rem,1.5vw,1.12rem);line-height:1.85;font-weight:300;opacity:0.7;margin-bottom:2.5rem}
+    .modal-desc p{margin-bottom:1.2rem}
+    .modal-photos-label{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.28em;text-transform:uppercase;opacity:0.3;margin-bottom:1.2rem;display:flex;align-items:center;gap:1rem}
+    .modal-photos-label::before{content:'';flex:1;height:0.5px;background:var(--rule)}
+    .modal-photos{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;margin-bottom:3rem}
+    .photo-slot{aspect-ratio:4/3;background:#111109;position:relative;overflow:hidden;cursor:zoom-in}
+    .photo-slot img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.6s cubic-bezier(0.22,1,0.36,1)}
+    .photo-slot:hover img{transform:scale(1.05)}
+    .photo-slot.wide{grid-column:span 2;aspect-ratio:16/7}
+    .photo-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(240,234,214,0.02) 39px,rgba(240,234,214,0.02) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(240,234,214,0.02) 39px,rgba(240,234,214,0.02) 40px)}
+    .add-hint span{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;opacity:0.1}
+    .lightbox{position:fixed;inset:0;z-index:600;background:rgba(4,4,4,0.97);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s}
+    .lightbox.open{opacity:1;pointer-events:all}
+    .lightbox img{max-width:92vw;max-height:92vh;object-fit:contain;display:block}
+    .lightbox-close{position:absolute;top:1.5rem;right:1.5rem;width:2.4rem;height:2.4rem;border:0.5px solid rgba(240,234,214,0.25);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:1.1rem;transition:border-color 0.3s}
+    .lightbox-close:hover{border-color:var(--accent)}
+    @media(max-width:960px){
+      .sw{padding:6rem 1.5rem 4rem}nav{padding:1.1rem 1.5rem}#hero{padding:0 1.5rem 4.5rem}footer{padding:1.5rem}
+      .mani-grid{grid-template-columns:1fr;gap:3rem}.mani-side{position:static}
+      .proj-grid{grid-template-columns:repeat(2,1fr)}
+      .film-split{grid-template-columns:1fr;gap:3rem}.contact-cols{grid-template-columns:1fr;gap:3.5rem}
+      .works-header{flex-direction:column;align-items:flex-start}
+      .modal-specs{grid-template-columns:repeat(2,1fr)}
+      .modal-photos{grid-template-columns:1fr}.photo-slot.wide{grid-column:span 1;aspect-ratio:4/3}
+    }
+    @media(max-width:640px){
+      .proj-grid{grid-template-columns:1fr}.proj-card{aspect-ratio:4/3}
+      .nav-links li:nth-child(-n+2){display:none}.hero-meta{flex-wrap:wrap;gap:1.5rem}
+      .modal-panel{width:100vw;border-left:none}
+    }
+  </style>
+
+  <style>
+    /* ══ PERSONALISED PALETTE ══════════════════════════════════
+       Inspired by: fired earth, cut stone, dried grass, river clay
+       — the materials of terrain-led construction             */
+    :root {
+      --bg:        #0E0B08;
+      --surface:   #141009;
+      --text:      #EEE5CC;
+      --text-dim:  rgba(238,229,204,0.5);
+      --accent:    #C24A18;        /* terracotta — fired clay  */
+      --sage:      #7A9268;        /* sage — ground vegetation */
+      --sand:      #C8A87A;        /* sand — exposed earth     */
+      --rule:      rgba(238,229,204,0.1);
+      --rule-warm: rgba(194,74,24,0.2);
+      --cyan:      #C24A18;
+      --cyan-dim:  rgba(194,74,24,0.1);
+    }
+
+    /* ── Remove the dot grid, replace with warm grain ────────── */
+    body::before {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") !important;
+      background-size: 200px !important;
+      opacity: 0.028 !important;
+    }
+
+    /* ── Nav — warm, minimal ──────────────────────────────────── */
+    nav {
+      background: rgba(14,11,8,0.88) !important;
+      border-bottom: 0.5px solid var(--rule) !important;
+    }
+    nav::before {
+      background: linear-gradient(90deg, var(--accent), transparent 40%, transparent 60%, var(--accent)) !important;
+      opacity: 0.3 !important;
+    }
+    .nav-logo { color: var(--sand) !important; opacity: 0.7 !important; }
+    .nav-links a { color: var(--text) !important; }
+    .nav-links a:hover, .nav-links a.active { color: var(--accent) !important; }
+    .nav-dot { background: var(--accent) !important; }
+
+    /* ── Hero — terrain-inspired ─────────────────────────────── */
+    #hero { background: var(--bg) !important; }
+    .hero-bp {
+      background:
+        linear-gradient(rgba(238,229,204,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(238,229,204,0.025) 1px, transparent 1px) !important;
+      background-size: 80px 80px !important;
+    }
+    /* Organic contour lines over the grid */
+    .hero-bp::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(rgba(194,74,24,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(238,229,204,0.04) 1px, transparent 1px) !important;
+      background-size: 320px 160px !important;
+    }
+    .hero-glow {
+      background: radial-gradient(ellipse 65% 55% at 55% 50%, rgba(194,74,24,0.05) 0%, transparent 70%) !important;
+    }
+    .hero-scan {
+      background: linear-gradient(90deg, transparent, rgba(194,74,24,0.5), transparent) !important;
+      opacity: 0.25 !important;
+    }
+    /* Ghost text — very faint, terrain-coloured */
+    .hero-ghost {
+      -webkit-text-stroke: 0.5px rgba(194,74,24,0.06) !important;
+      font-size: clamp(14rem, 28vw, 36rem) !important;
+      letter-spacing: 0.08em !important;
+    }
+    /* Name — large Cormorant serif instead of Bebas */
+    h1.hero-name {
+      font-family: 'Playfair Display', Georgia, serif !important;
+      font-weight: 400 !important;
+      font-size: clamp(4rem, 11vw, 10rem) !important;
+      letter-spacing: -0.01em !important;
+      line-height: 0.88 !important;
+      color: var(--text) !important;
+      text-shadow: 0 4px 60px rgba(0,0,0,0.9) !important;
+    }
+    h1.hero-name .accent {
+      font-style: italic !important;
+      color: var(--accent) !important;
+    }
+    .hero-eyebrow {
+      color: var(--sand) !important;
+      opacity: 0.55 !important;
+      letter-spacing: 0.3em !important;
+    }
+    .hero-eyebrow::before { background: var(--sand) !important; }
+    .hero-sub { color: var(--text-dim) !important; font-size: clamp(0.9rem, 1.5vw, 1.15rem) !important; }
+    .hero-scroll p, .hero-scroll .s-line::after {
+      color: var(--accent) !important;
+      background: linear-gradient(to bottom, transparent, var(--accent)) !important;
+    }
+    .cta-btn {
+      border-color: rgba(238,229,204,0.2) !important;
+      color: var(--sand) !important;
+    }
+    .cta-btn:hover { border-color: var(--accent) !important; }
+    .cta-btn::before { background: var(--cyan-dim) !important; }
+
+    /* ── Marquee — earth words ───────────────────────────────── */
+    .marquee-wrap { background: rgba(20,16,9,0.85) !important; }
+    .marquee-item { opacity: 0.2 !important; }
+    .marquee-item .dot { color: var(--accent) !important; }
+
+    /* ── Section labels — elevation marker style ─────────────── */
+    .s-label { color: var(--accent) !important; }
+    .s-label-num {
+      border-color: var(--accent) !important;
+      color: var(--accent) !important;
+      font-style: italic !important;
+      font-family: 'Cormorant Garamond', serif !important;
+      font-size: 0.7rem !important;
+      width: 1.8rem !important; height: 1.8rem !important;
+    }
+    .s-label::after { background: linear-gradient(90deg, var(--accent), transparent) !important; }
+
+    /* ── Manifesto — feels like a printed document ───────────── */
+    #manifesto { background: var(--surface) !important; }
+    .mani-h2 {
+      font-family: 'Playfair Display', Georgia, serif !important;
+      font-weight: 300 !important;
+      font-style: normal !important;
+      letter-spacing: -0.02em !important;
+    }
+    .mani-h2 .ac { color: var(--accent) !important; font-style: italic; }
+    .mani-aside { background: rgba(194,74,24,0.07) !important; border-color: var(--rule-warm) !important; }
+    .mani-aside::before { color: var(--accent) !important; background: var(--surface) !important; }
+    .mani-aside p { color: var(--sand) !important; opacity: 0.8 !important; }
+    .mani-quote { border-left-color: var(--accent) !important; }
+    .mani-quote::before { color: var(--accent) !important; }
+    .mani-quote cite { color: var(--sand) !important; }
+    .mani-body p { color: var(--text) !important; }
+
+    /* ── Works — site-drawing aesthetic ─────────────────────── */
+    .works-h2 {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 300 !important;
+      font-style: normal !important;
+      letter-spacing: -0.03em !important;
+    }
+    .works-h2 .ac { font-style: italic !important; color: var(--accent) !important; }
+    .feat-title {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 300 !important;
+      letter-spacing: -0.02em !important;
+    }
+    .feat-title .ac { font-style: italic !important; }
+    .feat-tag, .proj-tag { color: var(--accent) !important; }
+    .feat-tag::before { background: var(--accent) !important; }
+    .feat-arrow { color: var(--accent) !important; border-color: rgba(194,74,24,0.3) !important; }
+    .feat-proj:hover .feat-arrow { border-color: var(--accent) !important; background: var(--cyan-dim) !important; }
+    .proj-title {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 300 !important;
+    }
+    .proj-title .ac { font-style: italic !important; }
+    .proj-link { color: var(--accent) !important; }
+    .works-footer a { color: var(--accent) !important; }
+
+    /* ── Film ────────────────────────────────────────────────── */
+    #film { background: var(--surface) !important; }
+    .film-left h2 {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 300 !important;
+    }
+    .film-left h2 .ac { font-style: italic !important; }
+    .film-right::before, .film-right::after { border-color: rgba(194,74,24,0.2) !important; }
+    .fi-key { color: var(--sand) !important; opacity: 0.55 !important; }
+
+    /* ── Contact ─────────────────────────────────────────────── */
+    .contact-h2 {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 300 !important;
+    }
+    .contact-h2 .ac { font-style: italic !important; }
+    .soc-link { color: var(--sand) !important; border-color: rgba(200,168,122,0.2) !important; }
+    .soc-link:hover { color: var(--text) !important; border-color: var(--accent) !important; }
+    .dl-arr { color: var(--accent) !important; }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer { background: var(--surface) !important; }
+    .footer-diamond { background: var(--accent) !important; }
+
+    /* ── Modal ───────────────────────────────────────────────── */
+    .modal-tag { color: var(--accent) !important; }
+    .modal-tag::before { background: var(--accent) !important; }
+    .modal-title em { color: var(--accent) !important; }
+    .modal-close:hover { border-color: var(--accent) !important; }
+    .modal-bar { background: rgba(14,11,8,0.95) !important; }
+    .modal-panel { background: var(--bg) !important; }
+
+    /* ── Corner markers ──────────────────────────────────────── */
+    .corner-tl, .corner-br { border-color: rgba(194,74,24,0.2) !important; }
+
+    /* ── Cursor trail — terracotta ───────────────────────────── */
+
+    /* ── Blueprint grids → warm tone ────────────────────────── */
+    .bp-grid {
+      background:
+        linear-gradient(rgba(238,229,204,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(238,229,204,0.03) 1px, transparent 1px) !important;
+    }
+    .bp-grid::after {
+      background:
+        linear-gradient(rgba(238,229,204,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(238,229,204,0.07) 1px, transparent 1px) !important;
+    }
+  </style>
+
+  <style>
+    /* ── PLAYFAIR DISPLAY EVERYWHERE — NO BOLD ──────────────── */
+
+    /* Global: all serif and display elements use Playfair 400 */
+    body { font-family: 'Playfair Display', Georgia, serif !important; }
+
+    /* Strip bold from everything */
+    * { font-weight: 400 !important; }
+
+    /* Mono labels stay mono */
+    .nav-logo, .nav-links a, .hero-eyebrow, .meta-k, .meta-v,
+    .s-label, .s-label-num, .marquee-item, .feat-tag, .feat-year,
+    .feat-num, .proj-tag, .proj-num, .proj-year, .proj-link,
+    .modal-bar-label, .modal-tag, .spec-k, .spec-v,
+    .modal-photos-label, .film-info-row, .fi-key, .fi-val,
+    .dl-head, .dl-fmt, .dl-arr, .soc-link,
+    .works-count, .works-footer p, .works-footer a,
+    .mani-index, .mani-aside p, .mani-quote cite,
+    footer p, .annot, .video-placeholder p, .video-placeholder span,
+    [style*="var(--mono)"], [style*="IBM Plex"] {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace !important;
+    }
+
+    /* All headings and display text: Playfair 400 */
+    h1, h2, h3, h4, h5,
+    h1.hero-name, .mani-h2, .works-h2, .feat-title,
+    .proj-title, .film-left h2, .contact-h2,
+    .modal-title, .hero-sub, .mani-body p,
+    .mani-body p.lead, .mani-quote, .contact-tagline,
+    .feat-desc, .proj-desc, .film-left p,
+    .dl-name, .modal-desc, .modal-desc p {
+      font-family: 'Playfair Display', Georgia, serif !important;
+      font-weight: 400 !important;
+    }
+
+    /* Italic accent stays italic */
+    h1.hero-name .accent {
+      font-style: italic !important;
+      font-weight: 400 !important;
+      color: var(--accent) !important;
+    }
+    .mani-h2 .ac, .works-h2 .ac, .feat-title .ac,
+    .proj-title .ac, .film-left h2 .ac, .contact-h2 .ac,
+    .modal-title em {
+      font-style: italic !important;
+      font-weight: 400 !important;
+    }
+
+    /* Lead paragraph — italic */
+    .mani-body p.lead { font-style: italic !important; }
+
+    /* Blockquotes italic */
+    .mani-quote { font-style: italic !important; }
+
+    /* Hero name — large but no bold */
+    h1.hero-name {
+      font-family: 'Playfair Display', Georgia, serif !important;
+      font-weight: 400 !important;
+      font-size: clamp(4rem, 11vw, 10rem) !important;
+      line-height: 0.88 !important;
+      letter-spacing: -0.01em !important;
+    }
+
+    /* Section headings — comfortable size, no bold */
+    .mani-h2, .works-h2, .film-left h2, .contact-h2 {
+      font-weight: 400 !important;
+      letter-spacing: -0.01em !important;
+      text-transform: none !important;
+    }
+
+    /* Project titles no uppercase */
+    .feat-title, .proj-title {
+      text-transform: none !important;
+      letter-spacing: -0.01em !important;
+    }
+  </style>
+
+  <style>
+    /* ══ ARCHITECTURAL DESK OVERLAYS ══════════════════════════ */
+    :root { --hand: 'Caveat', cursive; }
+
+    /* Handwritten annotation base */
+    .arch-note {
+      font-family: var(--hand);
+      font-size: 0.75rem;
+      color: var(--accent);
+      opacity: 0.45;
+      pointer-events: none;
+      user-select: none;
+      line-height: 1.3;
+    }
+    .arch-dim {
+      font-family: var(--mono);
+      font-size: 0.42rem;
+      letter-spacing: 0.18em;
+      color: var(--text);
+      opacity: 0.18;
+      pointer-events: none;
+      user-select: none;
+      text-transform: uppercase;
+    }
+    /* Section cut symbol */
+    .section-cut {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      pointer-events: none;
+    }
+    .section-cut::before, .section-cut::after {
+      content: '';
+      width: 0.5rem; height: 0.5rem;
+      border: 0.5px solid var(--accent);
+      border-radius: 50%;
+      opacity: 0.4;
+    }
+    .section-cut span {
+      width: 2rem; height: 0.5px;
+      background: var(--accent);
+      opacity: 0.35;
+    }
+    /* Dimension arrow line */
+    .dim-line {
+      position: relative;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .dim-line::before, .dim-line::after {
+      content: '';
+      width: 0.5rem; height: 0.5rem;
+      border-right: 0.5px solid var(--text);
+      border-top: 0.5px solid var(--text);
+      opacity: 0.15;
+    }
+    .dim-line::before { transform: rotate(-135deg); }
+    .dim-line::after  { transform: rotate(45deg); }
+    /* Elevation marker */
+    .elev-marker {
+      font-family: var(--mono);
+      font-size: 0.4rem; letter-spacing: 0.2em;
+      color: var(--text); opacity: 0.15;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .elev-marker::before {
+      content: '▽';
+      font-size: 0.5rem;
+      color: var(--accent);
+      opacity: 0.4;
+    }
+  </style>
+
+  <style>
+    /* ── PORTRAIT VIDEO FULLSCREEN FIX ─────────────────────── */
+
+    /* Standard fullscreen — contain so full portrait is visible */
+    video:fullscreen {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      background: #000 !important;
+    }
+    video:-webkit-full-screen {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      background: #000 !important;
+    }
+    video:-moz-full-screen {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      background: #000 !important;
+    }
+    video:-ms-fullscreen {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      background: #000 !important;
+    }
+
+    /* Force black background behind portrait video in fullscreen */
+    :fullscreen { background: #000 !important; }
+    :-webkit-full-screen { background: #000 !important; }
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="#hero">Naga Adithya</a>
+  <ul class="nav-links">
+    <li><a href="#manifesto">Manifesto<span class="nav-dot"></span></a></li>
+    <li><a href="#works">Works<span class="nav-dot"></span></a></li>
+    <li><a href="#film">Film<span class="nav-dot"></span></a></li>
+    <li><a href="#contact">Contact<span class="nav-dot"></span></a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bp"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-scan"></div>
+  <div id="heroBgCollage" style="position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden;"></div>
+  <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none">
+    <line x1="0" y1="260" x2="1440" y2="260" stroke="rgba(237,232,216,0.04)" stroke-width="0.5"/>
+    <line x1="0" y1="640" x2="1440" y2="640" stroke="rgba(237,232,216,0.04)" stroke-width="0.5"/>
+    <path d="M60 60 L60 120 M60 60 L120 60" stroke="rgba(196,80,26,0.15)" stroke-width="0.5"/>
+    <path d="M1380 60 L1380 120 M1380 60 L1320 60" stroke="rgba(196,80,26,0.15)" stroke-width="0.5"/>
+    <text x="65" y="52" fill="rgba(196,80,26,0.15)" font-family="'IBM Plex Mono',monospace" font-size="8" letter-spacing="2">28°36'N</text>
+    <text x="1280" y="52" fill="rgba(196,80,26,0.15)" font-family="'IBM Plex Mono',monospace" font-size="8" letter-spacing="2">77°13'E</text>
+    <line x1="180" y1="850" x2="1260" y2="850" stroke="rgba(237,232,216,0.06)" stroke-width="0.5"/>
+    <text x="700" y="847" fill="rgba(237,232,216,0.08)" font-family="'IBM Plex Mono',monospace" font-size="7" text-anchor="middle" letter-spacing="3">PORTFOLIO — 2024–25</text>
+  </svg>
+  <div class="hero-ghost" aria-hidden="true">NA</div>
+  <p class="hero-eyebrow" data-r>B.Des · Architecture · 2022–25</p>
+  <h1 class="hero-name" data-r data-d="1">Naga<br/><span class="accent">Adithya</span></h1>
+  <p class="hero-sub" data-r data-d="2">A building should not arrive fully formed. It should emerge from its place — not imposed, but grown.</p>
+  <div class="hero-row" data-r data-d="3">
+    <div class="hero-meta">
+      <div class="meta-item"><span class="meta-k">School</span><span class="meta-v">Jindal School of Design<br/>and Architecture</span></div>
+      <div class="meta-item"><span class="meta-k">Degree</span><span class="meta-v">B.Des · Year 3</span></div>
+      <div class="meta-item"><span class="meta-k">Focus</span><span class="meta-v">Self Sustainability</span></div>
+    </div>
+    <a class="cta-btn" href="#works"><span>View Works</span><span class="cta-arr">→</span></a>
+  </div>
+  
+  <!-- Architectural hero annotations -->
+  <div style="position:absolute;top:5.5rem;left:3rem;pointer-events:none;z-index:2;display:flex;flex-direction:column;gap:0.6rem;">
+    <span class="arch-dim">N · 28°36'44&quot; &nbsp; E · 77°13'20&quot;</span>
+    <span class="arch-dim" style="opacity:0.12;">JSDA · NEW DELHI · INDIA</span>
+  </div>
+
+  <!-- Section cut symbol top right -->
+  <div style="position:absolute;top:5.8rem;right:3rem;pointer-events:none;z-index:2;display:flex;align-items:center;gap:0.5rem;opacity:0.35;">
+    <span style="font-family:var(--mono);font-size:0.4rem;letter-spacing:0.2em;color:var(--text);opacity:0.5;">SEC. A–A</span>
+    <span class="section-cut"><span></span></span>
+  </div>
+
+  <!-- Bottom right dimension annotation -->
+  <div style="position:absolute;bottom:5.2rem;left:3rem;pointer-events:none;z-index:2;">
+    
+  </div>
+
+  <!-- Vertical elevation marker left edge -->
+  <div style="position:absolute;top:50%;left:1.2rem;transform:translateY(-50%) rotate(-90deg);pointer-events:none;z-index:2;">
+    <span class="arch-dim" style="opacity:0.1;letter-spacing:0.3em;">EL. +0.000</span>
+  </div>
+
+  <!-- Measurement ticks on right -->
+  <div style="position:absolute;right:2.8rem;top:30%;pointer-events:none;z-index:2;display:flex;flex-direction:column;gap:0.8rem;opacity:0.2;">
+    <div style="width:0.8rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.4rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.4rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.8rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.4rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.4rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+    <div style="width:0.8rem;height:0.5px;background:var(--text);margin-left:auto;"></div>
+  </div>
+  <div class="hero-scroll" aria-hidden="true"><p>Scroll</p><div class="s-line"></div></div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap" aria-hidden="true"><div class="marquee-track" id="mq1"></div></div>
+
+<!-- MANIFESTO -->
+<section id="manifesto" class="sw">
+  <div class="bp-grid"></div><div class="corner-tl"></div><div class="corner-br"></div>
+  <div class="s-label"><span class="s-label-num">02</span>Manifesto</div>
+  <div class="mani-grid">
+    <div class="mani-side" data-r data-d="1">
+      <h2 class="mani-h2">My<br/><span class="ac">Thoughts</span></h2>
+      <p class="mani-index">— 02 / 05</p>
+      <div style="margin-top:3rem;display:flex;flex-direction:column;gap:0.8rem;pointer-events:none;">
+        <span class="elev-marker">Ground Floor &nbsp; +0.000</span>
+        <span class="elev-marker">First Floor &nbsp;&nbsp;&nbsp; +3.500</span>
+        <span class="elev-marker">Roof Level &nbsp;&nbsp;&nbsp;&nbsp; +7.200</span>
+      </div>
+      <div style="margin-top:2rem;pointer-events:none;">
+        <span class="arch-note" style="opacity:0.35;font-size:0.85rem;display:block;transform:rotate(-1.5deg);">terrain first</span>
+        <span class="arch-note" style="opacity:0.2;font-size:0.7rem;display:block;margin-top:0.3rem;transform:rotate(-0.5deg);">ref: site analysis</span>
+      </div>
+      <div style="margin-top:2.5rem;display:flex;align-items:center;gap:0.5rem;pointer-events:none;opacity:0.25;">
+        <div style="width:1px;height:2.5rem;background:var(--accent);opacity:0.6;"></div>
+        <span style="font-family:var(--mono);font-size:0.38rem;letter-spacing:0.2em;color:var(--text);text-transform:uppercase;writing-mode:vertical-rl;">Section B–B</span>
+      </div>
+    </div>
+    <div class="mani-body">
+
+      <p class="lead" data-r data-d="2">
+        Architecture today often forgets where it stands.
+      </p>
+
+      <p data-r data-d="2">
+        Buildings continue to rise taller and brighter, yet remain detached from the ground they occupy. They perform and function, but often only through constant mechanical support rather than through an understanding of their environment. Glass confronts harsh sunlight without response, conditioned air replaces winds that already exist, and materials travel across distances longer than the lives they eventually serve. In this pursuit of efficiency and image, architecture risks losing its relationship with place.
+      </p>
+
+      <p data-r data-d="3" style="font-style:italic;font-size:clamp(0.95rem,1.4vw,1.1rem);opacity:0.85;">
+        This direction demands resistance.
+      </p>
+
+      <p data-r data-d="3">
+        Buildings that fight their environment instead of working with it fail their context. Forms that ignore the ground beneath them lose their meaning, and architecture that exists only to be seen remains incomplete.
+      </p>
+
+      <div class="h-rule" style="margin:2rem 0;" data-r data-d="3"></div>
+
+      <p data-r data-d="3">
+        What already exists must come first: the heat that defines the day, the wind that moves through space, the soil, the dust, the uneven ground, and the hands that already know how to build with all of it.
+      </p>
+
+      <p data-r data-d="4">
+        Climate is not an obstacle to overcome but the starting point of design. Materials are not simply selected; they are found within the logic of a place. Labour is not external to architecture but already embedded within local knowledge and construction practices.
+      </p>
+
+      <p data-r data-d="4" style="font-style:italic;font-size:clamp(0.95rem,1.4vw,1.1rem);opacity:0.85;">
+        A building should not arrive fully formed or imposed onto a site. It should emerge from its surroundings naturally — not perfect but fitting, not distant but belonging.
+      </p>
+
+      <div style="margin:2.5rem 0;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;" data-r data-d="4">
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <span style="width:1.5rem;height:0.5px;background:var(--accent);flex-shrink:0;"></span>
+            <span style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;opacity:0.7;">Not imposed, but grown.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <span style="width:1.5rem;height:0.5px;background:var(--accent);flex-shrink:0;"></span>
+            <span style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;opacity:0.7;">Not perfect, but fitting.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <span style="width:1.5rem;height:0.5px;background:var(--accent);flex-shrink:0;"></span>
+            <span style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;opacity:0.7;">Not distant, but belonging.</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1.2rem;">
+          <div><img src="assets/image-01.jpg" alt="Organic form sketch" style="width:100%;max-width:220px;display:block;mix-blend-mode:screen;opacity:0.85;filter:invert(1) hue-rotate(180deg) contrast(1.05);"/><span style="display:block;font-family:var(--mono);font-size:0.42rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(238,229,204,0.3);margin-top:0.4rem;">Organic form · site growth</span></div>
+          <div><img src="assets/image-02.jpg" alt="Site section sketch" style="width:100%;max-width:280px;display:block;mix-blend-mode:screen;opacity:0.85;filter:invert(1) hue-rotate(180deg) contrast(1.05);"/><span style="display:block;font-family:var(--mono);font-size:0.42rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(238,229,204,0.3);margin-top:0.4rem;">Terrain section · level response</span></div>
+        </div>
+      </div>
+
+      <div class="h-rule" style="margin:2rem 0;" data-r data-d="4"></div>
+
+      <p data-r data-d="4">
+        The wind already knows how to cool a space. Architecture only needs to listen. Comfort should not depend entirely on machines, but on an understanding of orientation, airflow, light, and shade. The ground already contains the answer; design becomes the act of discovering and responding to it.
+      </p>
+
+      <p data-r data-d="5" style="font-style:italic;font-size:clamp(0.95rem,1.4vw,1.1rem);opacity:0.85;">
+        Excess does not define good design.
+      </p>
+
+      <p data-r data-d="5">
+        A building that requires constant energy simply to remain comfortable has already failed its environment. Similarly, a building that ignores its context cannot truly belong, and one that cannot be built or understood by the people around it loses its relevance.
+      </p>
+
+      <div style="margin:1.5rem 0 1.5rem 2rem;display:flex;flex-direction:column;gap:0.5rem;" data-r data-d="5">
+        <span style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;opacity:0.55;">Less reliance on machines. More trust in climate.</span>
+        <span style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;opacity:0.55;">Less import. More ground.</span>
+        <span style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;opacity:0.55;">Less control. More response.</span>
+      </div>
+
+      <div class="h-rule" style="margin:2rem 0;" data-r data-d="5"></div>
+
+      <p data-r data-d="5">
+        Architecture is not an isolated object but a condition for living: where light enters, where air moves, where people gather, adapt, and continue. It should support life quietly and consistently rather than demand constant resources simply to survive.
+      </p>
+
+      <p data-r data-d="5">
+        Before a building is constructed, it must first learn how to belong.
+      </p>
+
+      <div data-r data-d="6" style="margin-top:2rem;display:inline-block;position:relative;">
+        <span style="font-family:'Caveat',cursive;font-size:clamp(2.2rem,4vw,3.2rem);font-weight:500;color:var(--accent);opacity:0.85;display:block;transform:rotate(-1.8deg);letter-spacing:0.01em;line-height:1.1;">Belong before build.</span>
+        <svg viewBox="0 0 320 12" style="width:90%;margin-top:-4px;opacity:0.5;display:block;transform:rotate(-0.8deg);" preserveAspectRatio="none">
+          <path d="M2 8 Q50 4 100 8 Q150 12 200 7 Q250 3 318 8" stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="h-rule" style="margin:3.5rem 0 2.5rem;" data-r data-d="6"></div>
+
+      <p style="font-family:var(--mono);font-size:0.55rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);margin-bottom:2rem;display:flex;align-items:center;gap:1rem;" data-r data-d="6">
+        <span style="width:1.5rem;height:0.5px;background:var(--accent);display:inline-block;"></span>Inspiration
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:0;" data-r data-d="6">
+        <blockquote class="mani-quote">"The cheapest, most appropriate building materials are those that are locally available."<cite>— Laurie Baker</cite></blockquote>
+        <blockquote class="mani-quote">"Sustainability is not only about ecology, it is also about community."<cite>— Diébédo Francis Kéré</cite></blockquote>
+        <blockquote class="mani-quote">"To build well is to disturb less."<cite>— Glenn Murcutt</cite></blockquote>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE 2 -->
+<div class="marquee-wrap" aria-hidden="true"><div class="marquee-track" id="mq2" style="animation-direction:reverse;"></div></div>
+
+<!-- WORKS -->
+<section id="works" class="sw" style="padding-bottom:0;">
+  <div class="bp-grid"></div><div class="corner-tl"></div>
+  
+  <!-- Drawing board annotations -->
+  <div style="position:absolute;top:6.5rem;right:3rem;pointer-events:none;z-index:2;text-align:right;display:flex;flex-direction:column;gap:0.3rem;">
+    <span class="arch-dim">DWG NO. 04 &nbsp; REV. B</span>
+    <span class="arch-dim" style="opacity:0.1;">SCALE 1:500 · NTS</span>
+    <span class="arch-dim" style="opacity:0.1;">DATE: 2024–25</span>
+  </div>
+  <div style="position:absolute;bottom:0;left:3rem;right:3rem;height:0.5px;background:linear-gradient(90deg,transparent,var(--rule),transparent);pointer-events:none;z-index:2;"></div>
+  <div class="s-label"><span class="s-label-num">03</span>Selected Works</div>
+  <div class="works-header">
+    <h2 class="works-h2" data-r data-d="1">Academic<br/><span class="ac">Projects</span></h2>
+    <p class="works-count" data-r data-d="2">04 works<br/>2024 — 2025</p>
+  </div>
+  <!-- Featured -->
+  <div class="feat-proj" data-r data-project="vistavana">
+    <div class="feat-img"></div>
+    <div class="feat-overlay">
+      <span class="feat-tag">Residential Project · 2025</span>
+      <h3 class="feat-title">Vistavana <span class="ac">Residences</span></h3>
+      <div class="feat-meta-row">
+        <span class="feat-year">Master Planning & Landscaping · 2025</span>
+        <p class="feat-desc">A climate responsive residential master plan in Mandi, guided by terrain, hydrology, and community-centred design.</p>
+        <div class="feat-arrow">↗</div>
+      </div>
+    </div>
+    <span class="feat-num">01 / 04</span>
+  </div>
+  <!-- Grid -->
+  <div class="proj-grid">
+    <div class="proj-card" data-r data-d="1" data-project="upcycling">
+      <div class="proj-img"></div>
+      <div class="proj-overlay">
+        <span class="proj-num">02 / 04</span><span class="proj-tag">Interior · 2025</span>
+        <h4 class="proj-title">Upcycling <span class="ac">Workstation</span></h4>
+        <p class="proj-desc">Modular drafting desk for architecture students built from reused materials.</p>
+        <div class="proj-detail"><span class="proj-year">Form and Structure · 2025</span><span class="proj-link">View →</span></div>
+      </div>
+    </div>
+    <div class="proj-card" data-r data-d="2" data-project="menstrual">
+      <div class="proj-img"></div>
+      <div class="proj-overlay">
+        <span class="proj-num">03 / 04</span><span class="proj-tag">Civic · 2024</span>
+        <h4 class="proj-title">Menstrual <span class="ac">Equity</span></h4>
+        <p class="proj-desc">A public toilet redesigned for inclusivity, safety, and dignity.</p>
+        <div class="proj-detail"><span class="proj-year">Form and Structure · 2024</span><span class="proj-link">View →</span></div>
+      </div>
+    </div>
+    <div class="proj-card" data-r data-d="3" data-project="services">
+      <div class="proj-img"></div>
+      <div class="proj-overlay">
+        <span class="proj-num">04 / 04</span><span class="proj-tag">Commercial · 2025</span>
+        <h4 class="proj-title">Services for <span class="ac">an Office</span></h4>
+        <p class="proj-desc">Integrated building services designed as a core part of spatial design.</p>
+        <div class="proj-detail"><span class="proj-year">Services · 2025</span><span class="proj-link">View →</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="works-footer"><p>Full portfolio available to download below</p><a href="#contact">Download PDF →</a></div>
+</section>
+
+<!-- FILM -->
+<section id="film" class="sw">
+  <div class="bp-grid"></div><div class="corner-tl"></div><div class="corner-br"></div>
+  
+  <div style="position:absolute;top:6.5rem;right:3rem;pointer-events:none;z-index:2;text-align:right;">
+    <span class="arch-note" style="opacity:0.3;font-size:0.8rem;display:block;transform:rotate(0.8deg);">on architecture</span>
+    <span class="arch-dim" style="display:block;margin-top:0.3rem;">personal statement · 2026</span>
+  </div>
+  <div class="s-label"><span class="s-label-num">04</span>In Conversation</div>
+  <div class="film-split">
+    <div class="film-left" data-r data-d="1">
+      <h2>On <span class="ac">Architecture</span></h2>
+      <p>A personal reflection on space, form, and what it means to build — in my own words.</p>
+      <div class="film-info">
+        <div class="film-info-row"><span class="fi-key">Year</span><span class="fi-val">2026</span></div>
+        <div class="film-info-row"><span class="fi-key">—</span><span class="fi-val" style="font-style:italic;opacity:0.8;font-size:1.1rem;line-height:1.6;font-family:var(--serif);">"Construction today solves problems it created yesterday."</span></div>
+      </div>
+    </div>
+    <div class="film-right" data-r data-d="2">
+
+        <div style="
+          position: relative;
+          max-width: 340px;
+          margin: 0 auto;
+        ">
+
+          <!-- Glow behind frame -->
+          <div style="
+            position: absolute;
+            inset: -10px;
+            border-radius: 8px;
+            background: radial-gradient(ellipse at 50% 60%, rgba(196,80,26,0.14) 0%, transparent 70%);
+            filter: blur(14px);
+            z-index: 0;
+            pointer-events: none;
+          "></div>
+
+          <!-- Video wrapper — portrait 9:16 -->
+          <div style="
+            position: relative;
+            width: 100%;
+            padding-top: 177.78%;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 0.5px solid rgba(238,229,204,0.12);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 20px 60px rgba(0,0,0,0.65);
+            background: #0A0806;
+            z-index: 1;
+          ">
+
+            <!-- The video -->
+            <video
+              autoplay
+              muted
+              loop
+              playsinline
+              controls
+              id="portfolioVid"
+              src="about:blank" data-video-parts="14"
+              style="
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+                border-radius: 4px;
+              ">
+              Your browser does not support the video tag.
+            </video>
+
+            <!-- Grain overlay -->
+            <div style="
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              z-index: 2;
+              background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');
+              background-size: 180px;
+              opacity: 0.022;
+              mix-blend-mode: overlay;
+            "></div>
+
+            <!-- Vignette -->
+            <div style="
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              z-index: 3;
+              background: radial-gradient(ellipse 90% 90% at 50% 50%, transparent 50%, rgba(10,8,6,0.5) 100%);
+            "></div>
+
+          </div>
+
+          <!-- Label beneath -->
+          <div style="
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 0.2rem;
+          ">
+            <span style="
+              font-family: 'Caveat', cursive;
+              font-size: 0.85rem;
+              color: var(--accent);
+              opacity: 0.45;
+              transform: rotate(-0.8deg);
+              display: block;
+            ">on architecture, 2026</span>
+            <span style="
+              font-family: var(--mono);
+              font-size: 0.38rem;
+              letter-spacing: 0.2em;
+              color: var(--text);
+              opacity: 0.2;
+              text-transform: uppercase;
+            ">VID · 01</span>
+          </div>
+
+        </div>
+
+      </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" class="sw">
+  <div class="bp-grid"></div><div class="corner-tl"></div>
+  
+  <div style="position:absolute;bottom:3rem;right:3rem;pointer-events:none;z-index:2;text-align:right;display:flex;flex-direction:column;gap:0.4rem;opacity:0.3;">
+    <span class="arch-note" style="font-size:0.8rem;">open to site visits</span>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.4rem;">
+      <span class="arch-dim">+91 9705484848</span>
+      <div style="width:0.4rem;height:0.4rem;border:0.5px solid var(--accent);transform:rotate(45deg);"></div>
+    </div>
+  </div>
+  <div class="s-label"><span class="s-label-num">05</span>Get in Touch</div>
+  <div class="contact-cols">
+    <div>
+      <h2 class="contact-h2" data-r data-d="1">Let's<br/><span class="ac">Connect</span></h2>
+      <p class="contact-tagline" data-r data-d="2">Open to collaborations, internship opportunities, and conversations about architecture, cities, and ideas.</p>
+    </div>
+    <div>
+      <div data-r data-d="2">
+        <p class="dl-head">Downloads</p>
+        <div class="dl-list">
+          <a class="dl-row" href="portfolio.pdf" download><span class="dl-name">Portfolio 2024–25</span><span class="dl-right"><span class="dl-fmt">PDF · 140 MB</span><span class="dl-arr">↓</span></span></a>
+          <a class="dl-row" href="resume.pdf" download><span class="dl-name">Curriculum Vitae</span><span class="dl-right"><span class="dl-fmt">PDF · ~1 MB</span><span class="dl-arr">↓</span></span></a>
+        </div>
+      </div>
+      <div style="margin-top:2.5rem;" data-r data-d="2">
+        <p class="dl-head">Contact</p>
+        <div class="dl-list">
+          <a class="dl-row" href="mailto:medepallinagaadithya0631@gmail.com"><span class="dl-name" style="font-size:0.88rem;font-family:var(--mono);letter-spacing:0.05em;">medepallinagaadithya0631@gmail.com</span><span class="dl-right"><span class="dl-arr" style="opacity:1;">→</span></span></a>
+          <div class="dl-row" style="cursor:default;"><span class="dl-name">+91 9705484848</span><span class="dl-right"><span class="dl-fmt">Mobile</span></span></div>
+        </div>
+      </div>
+      <div class="socials" data-r data-d="3">
+        <p class="dl-head">Find me on</p>
+        <div class="social-row"><a class="soc-link" href="https://www.linkedin.com/in/naga-adithya-medepalli-a80b56238/" target="_blank" rel="noopener">LinkedIn</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© <span id="yr"></span> Naga Adithya</p>
+  <div class="footer-diamond"></div>
+  <p>Architecture · Design · Thought</p>
+</footer>
+
+<!-- MODAL -->
+<div class="proj-modal" id="projModal" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-panel" id="modalPanel">
+    <div class="modal-bar"><span class="modal-bar-label" id="modalBarLabel">Project</span><button class="modal-close" id="modalClose" aria-label="Close">✕</button></div>
+    <div class="modal-hero" id="modalHero"><div class="modal-hero-placeholder" id="modalHeroPlaceholder"><p>Project Images</p></div></div>
+    <div class="modal-body">
+      <span class="modal-tag" id="modalTag"></span>
+      <h2 class="modal-title" id="modalTitle"></h2>
+      <div class="modal-specs" id="modalSpecs"></div>
+      <div class="modal-desc" id="modalDesc"></div>
+      <p class="modal-photos-label">Project Images</p>
+      <div class="modal-photos" id="modalPhotos"></div>
+    </div>
+  </div>
+</div>
+<div class="lightbox" id="lightbox"><button class="lightbox-close" id="lightboxClose">✕</button><img src="" alt="" id="lightboxImg"/></div>
+
+<script>
+  const PROJECTS = {
+    vistavana: {
+      barLabel:'01 / 04 — Residential Project 2025',tag:'Residential Project · 2025',
+      title:'Vistavana <em>Residences</em>',heroImage:'assets/image-03.jpg',
+      specs:[{k:'Type',v:'Residential'},{k:'Year',v:'2025'},{k:'Studio',v:'Master Planning & Landscaping'},{k:'Scale',v:'Master Plan'},{k:'Focus',v:'Terrain Led Planning'},{k:'Site',v:'Mandi, Himachal Pradesh'}],
+      description:`<p>Vistavana Residences is a residential master plan in Mandi that responds to the site's topography, hydrology, and surrounding landscape. The proposal is informed by a detailed analysis of slope, drainage patterns, and water accumulation zones, which guide the placement of built form, circulation networks, and open spaces.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Master Plan · Site Organisation</p>
+        <p>The master plan establishes a clear hierarchy of movement, separating vehicular and pedestrian flows while prioritising walkability and accessibility. A network of internal streets, pathways, and trails connects residential clusters to shared amenities, open grounds, and a continuous riverfront edge.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Landscape · Ecology</p>
+        <p>Landscape is treated as both an ecological and spatial system. Native planting is strategically used to stabilise soil, manage runoff, and respond to seasonal variations. Water sensitive planning is incorporated to work with existing drainage conditions.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Zoning · Programme</p>
+        <p>The development is organised into distinct residential zones with shared community infrastructure, allowing for variation in density while maintaining coherence across the master plan.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Roads · Circulation</p>
+        <p>Vistavana Residences proposes a context driven approach to housing, where planning, landscape, and infrastructure are integrated to create a resilient and efficient residential environment.</p>`,
+      photos:[{src:'assets/image-03.jpg',wide:true},{src:'assets/image-04.jpg',wide:true},{src:'assets/image-05.jpg',wide:true},{src:'assets/image-06.jpg',wide:false},{src:'assets/image-07.jpg',wide:false}]
+    },
+    upcycling: {
+      barLabel:'02 / 04 — Interior',tag:'Interior · Product Design · 2025',
+      title:'Upcycling <em>Drafting Workstation</em>',heroImage:'assets/image-08.jpg',
+      specs:[{k:'Type',v:'Furniture / Product'},{k:'Year',v:'2025'},{k:'Studio',v:'Form and Structure'},{k:'Scale',v:'Object'},{k:'Focus',v:'Ergonomic · User Friendly'},{k:'Material',v:'Reused · Modular'}],
+      description:`<p>Upcycling Workstation is a furniture redesign project that rethinks the conventional studio desk through material reuse and functional adaptability. The proposal works within existing constraints of material, cost, and space to develop a modular workstation that responds to the daily needs of architecture students.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Design · Adaptability</p>
+        <p>The design introduces integrated elements such as foldable work surfaces, concealed storage, and a built in pin up system, allowing the desk to support multiple modes of use including drafting, review, storage, and presentation.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Studio Environment · In Use</p>
+        <p>The workstation is designed for the shared studio — a space that demands flexibility, collaboration, and reconfiguration.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Construction · Material Detail</p>
+        <p>Material selection prioritises reuse and upcycling. Key components — foldable brackets, hinges, and caster wheels — are off the shelf elements repurposed within a considered structural system. Up-cycling at just Rs 8518.</p>`,
+      photos:[{src:'assets/image-08.jpg',wide:false},{src:'assets/image-09.jpg',wide:false},{src:'assets/image-10.jpg',wide:false},{src:'assets/image-11.jpg',wide:false},{src:'assets/image-09.jpg',wide:true}]
+    },
+    menstrual: {
+      barLabel:'03 / 04 — Civic',tag:'Civic · Public Sanitation · 2024',
+      title:'Menstrual <em>Equity</em>',heroImage:'assets/image-12.jpg',
+      specs:[{k:'Type',v:'Civic / Public'},{k:'Year',v:'2024'},{k:'Studio',v:'Form and Structure'},{k:'Scale',v:'Building'},{k:'Focus',v:'Inclusive Design'},{k:'Site',v:'Urban'}],
+      description:`<p>Menstrual Equity Public Toilet is a redesign of an existing sanitation facility that addresses privacy, safety, and user comfort through spatial reorganisation. A key intervention involves repositioning the entrance from an exposed, high traffic edge to a more controlled and secluded access point.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Elevation · Entry &amp; Access</p>
+        <p>The internal layout is reconfigured to establish a clear and secure circulation sequence, minimising points of conflict and enhancing accessibility.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Section · Light &amp; Ventilation</p>
+        <p>Natural light and ventilation are introduced through a perforated brick screen, improving environmental quality while maintaining privacy.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Plan · Spatial Layout</p>
+        <p>The project positions sanitation infrastructure as a critical component of urban dignity, proposing a safer, more inclusive approach to everyday public facilities.</p>`,
+      photos:[{src:'assets/image-12.jpg',wide:true},{src:'assets/image-13.jpg',wide:true},{src:'assets/image-14.jpg',wide:true}]
+    },
+    services: {
+      barLabel:'04 / 04 — Services',tag:'Building Services · 2025',
+      title:'Services for <em>an Office</em>',heroImage:'assets/image-15.jpg',
+      specs:[{k:'Type',v:'Commercial'},{k:'Year',v:'2025'},{k:'Studio',v:'Services'},{k:'Scale',v:'Building Level'},{k:'Focus',v:'Efficient Services Planning'},{k:'Site',v:'Office Building'}],
+      description:`<p>This project focuses on the integration of building services as a core part of spatial design rather than an afterthought. The aim was to create an efficient, functional system that supports the daily operation of an office environment.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Plumbing · Sanitation</p>
+        <p>The design organizes services such as electrical systems, HVAC, plumbing, and vertical circulation into a clear and logical network with dedicated service zones and shafts.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">Structure · Services Coordination</p>
+        <p>Service routes were aligned with structural grids to optimize space usage and avoid unnecessary complexity, reducing material wastage and construction challenges.</p>
+        <p style="font-family:var(--mono);font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;opacity:0.35;margin-bottom:0.6rem;">HVAC · Electrical · Fire</p>
+        <p>Overall, the project demonstrates how thoughtful planning of services can enhance both functionality and spatial quality, turning invisible systems into an essential part of the architectural design.</p>`,
+      photos:[{src:'assets/image-15.jpg',wide:true},{src:'assets/image-16.jpg',wide:false},{src:'assets/image-17.jpg',wide:false},{src:'assets/image-18.jpg',wide:true},{src:'assets/image-19.jpg',wide:true},{src:'assets/image-20.jpg',wide:true},{src:'assets/image-21.jpg',wide:true},{src:'assets/image-22.jpg',wide:true},{src:'assets/image-23.jpg',wide:true}]
+    }
+  };
+
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // Marquee
+  ['mq1','mq2'].forEach(id => {
+    const el = document.getElementById(id);
+    const items = ['Terrain','Material','Climate','Community','Belonging','Ground','Respond','Inhabit','Sustain','Build'];
+    el.innerHTML = (items.map(t=>`<span class="marquee-item">${t}<span class="dot"> ◆ </span></span>`).join('')).repeat(6);
+  });
+
+  // Hero collage background from project images (no duplication)
+  (function(){
+    const heroBg = document.getElementById('heroBgCollage');
+    if(!heroBg) return;
+    const elev = PROJECTS.menstrual.heroImage;
+    const sect = PROJECTS.menstrual.photos[1].src;
+    const d1 = document.createElement('div');
+    d1.style.cssText = `position:absolute;top:-5%;right:-8%;width:68%;height:110%;background:url('${elev}') center/cover no-repeat;opacity:0.13;-webkit-mask-image:linear-gradient(to right,transparent 0%,black 25%,black 85%,transparent 100%);mask-image:linear-gradient(to right,transparent 0%,black 25%,black 85%,transparent 100%);`;
+    heroBg.appendChild(d1);
+    const d2 = document.createElement('div');
+    d2.style.cssText = `position:absolute;bottom:-8%;right:-4%;width:58%;height:72%;background:url('${sect}') center/cover no-repeat;opacity:0.18;-webkit-mask-image:linear-gradient(to right,transparent 0%,black 20%,black 90%,transparent 100%);mask-image:linear-gradient(to right,transparent 0%,black 20%,black 90%,transparent 100%);`;
+    heroBg.appendChild(d2);
+    const grad = document.createElement('div');
+    grad.style.cssText = 'position:absolute;inset:0;background:linear-gradient(to right,#0B0B09 0%,#0B0B09 18%,rgba(11,11,9,0.65) 42%,transparent 68%);';
+    heroBg.appendChild(grad);
+    const glow = document.createElement('div');
+    glow.style.cssText = 'position:absolute;top:-20%;right:-10%;width:50%;height:70%;background:radial-gradient(ellipse at 70% 30%,rgba(237,232,216,0.065) 0%,transparent 60%);';
+    heroBg.appendChild(glow);
+  })();
+
+  // Set card preview images
+  document.querySelectorAll('[data-project]').forEach(card => {
+    const proj = PROJECTS[card.dataset.project];
+    if(proj?.heroImage) {
+      const imgDiv = card.querySelector('.proj-img,.feat-img');
+      if(imgDiv) { imgDiv.style.backgroundImage=`url('${proj.heroImage}')`;imgDiv.style.backgroundSize='contain';imgDiv.style.backgroundRepeat='no-repeat';imgDiv.style.backgroundPosition='center';imgDiv.style.backgroundColor='#000'; }
+    }
+  });
+
+  // Scroll reveal
+  const ro = new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target)}}),{threshold:0.1});
+  document.querySelectorAll('[data-r]').forEach(el=>ro.observe(el));
+  setTimeout(()=>document.querySelectorAll('#hero [data-r]').forEach(el=>el.classList.add('vis')),150);
+
+  // Active nav
+  const navAs = document.querySelectorAll('.nav-links a');
+  const no = new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)navAs.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id))}),{threshold:0.35});
+  document.querySelectorAll('section[id]').forEach(s=>no.observe(s));
+
+  // Cursor trail
+  const sty=document.createElement('style');sty.textContent='@keyframes dotOut{to{opacity:0;transform:translate(-50%,-50%) scale(5)}}';document.head.appendChild(sty);
+  let lastT=0;
+  document.addEventListener('mousemove',e=>{const now=Date.now();if(now-lastT<40)return;lastT=now;const d=document.createElement('div');d.style.cssText=`position:fixed;width:2px;height:2px;border-radius:50%;background:rgba(196,80,26,0.6);pointer-events:none;z-index:9999;left:${e.clientX}px;top:${e.clientY}px;transform:translate(-50%,-50%);animation:dotOut 0.65s forwards;`;document.body.appendChild(d);setTimeout(()=>d.remove(),650)});
+
+  // Parallax ghost
+  const ghost=document.querySelector('.hero-ghost');
+  if(ghost)window.addEventListener('scroll',()=>{ghost.style.transform=`translateY(calc(-52% + ${window.scrollY*0.1}px))`},{passive:true});
+
+  // Modal
+  const modal=document.getElementById('projModal'),backdrop=document.getElementById('modalBackdrop'),closeBtn=document.getElementById('modalClose'),panel=document.getElementById('modalPanel'),barLabel=document.getElementById('modalBarLabel'),modalHero=document.getElementById('modalHero'),heroPlaceholder=document.getElementById('modalHeroPlaceholder'),modalTag=document.getElementById('modalTag'),modalTitle=document.getElementById('modalTitle'),modalSpecs=document.getElementById('modalSpecs'),modalDesc=document.getElementById('modalDesc'),modalPhotos=document.getElementById('modalPhotos'),lightbox=document.getElementById('lightbox'),lbImg=document.getElementById('lightboxImg'),lbClose=document.getElementById('lightboxClose');
+
+  function openModal(key){
+    const p=PROJECTS[key];if(!p)return;
+    barLabel.textContent=p.barLabel;modalTag.innerHTML=p.tag;modalTitle.innerHTML=p.title;
+    const existingImg=modalHero.querySelector('img');if(existingImg)existingImg.remove();
+    if(p.heroImage){const img=document.createElement('img');img.src=p.heroImage;img.alt=p.tag;img.style.cssText='width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;';modalHero.appendChild(img);heroPlaceholder.style.display='none';}else{heroPlaceholder.style.display='flex';}
+    modalSpecs.innerHTML=p.specs.map(s=>`<div class="modal-spec"><p class="spec-k">${s.k}</p><p class="spec-v">${s.v}</p></div>`).join('');
+    modalDesc.innerHTML=p.description;
+    modalPhotos.innerHTML=p.photos.map(ph=>ph.src?`<div class="photo-slot${ph.wide?' wide':''}"><img src="${ph.src}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>`:`<div class="photo-slot${ph.wide?' wide':''}"><div class="photo-placeholder"><div class="add-hint"><span>Add image</span></div></div></div>`).join('');
+    modalPhotos.querySelectorAll('.photo-slot img').forEach(img=>img.addEventListener('click',()=>openLightbox(img.src)));
+    panel.scrollTop=0;modal.classList.add('open');document.body.style.overflow='hidden';
+  }
+  function closeModal(){modal.classList.remove('open');document.body.style.overflow='';}
+  function openLightbox(src){lbImg.src=src;lightbox.classList.add('open');}
+  function closeLightbox(){lightbox.classList.remove('open');lbImg.src='';}
+
+  document.querySelectorAll('[data-project]').forEach(card=>{card.style.cursor='pointer';card.addEventListener('click',()=>openModal(card.dataset.project));});
+  closeBtn.addEventListener('click',closeModal);backdrop.addEventListener('click',closeModal);lbClose.addEventListener('click',closeLightbox);
+  lightbox.addEventListener('click',e=>{if(e.target===lightbox||e.target===lbImg)closeLightbox();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLightbox();closeModal();}});
+</script>
+
+
+  <script>
+    /* ── VIDEO VOLUME BOOST ───────────────────────────────── */
+    (function() {
+      const vid = document.getElementById('portfolioVid');
+      if (!vid) return;
+
+      function boostVolume() {
+        vid.muted = false;
+        vid.volume = 1.0;
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          if (vid._audioCtx) return; // already boosted
+          const ctx = new AC();
+          const src = ctx.createMediaElementSource(vid);
+          const gain = ctx.createGain();
+          gain.gain.value = 2.8;
+          src.connect(gain);
+          gain.connect(ctx.destination);
+          vid._audioCtx = ctx;
+          if (ctx.state === 'suspended') ctx.resume();
+        } catch(e) { vid.volume = 1.0; }
+      }
+
+      // Boost on any user interaction (needed for browser autoplay policy)
+      ['click','touchstart','keydown'].forEach(ev =>
+        document.addEventListener(ev, function once() {
+          boostVolume();
+          document.removeEventListener(ev, once);
+        })
+      );
+
+      // Also boost when video starts playing
+      vid.addEventListener('play', boostVolume);
+
+      // Set volume immediately (even if muted for autoplay)
+      vid.volume = 1.0;
+    })();
+  </script>
+
+<script>
+/* Assemble the original portfolio film from repository-managed binary chunks. */
+window.addEventListener('DOMContentLoaded', async () => {
+  const video = document.getElementById('portfolioVid');
+  if (!video) return;
+  try {
+    const count = Number(video.dataset.videoParts);
+    const pieces = await Promise.all(Array.from({length:count},async (_, i) => {
+      const path = 'assets/portfolio-video-' + String(i + 1).padStart(2,'0') + '.part';
+      const response = await fetch(path);
+      if (!response.ok) throw new Error('Missing video segment: ' + path);
+      return response.blob();
+    }));
+    video.src = URL.createObjectURL(new Blob(pieces, {type:'video/mp4'}));
+    video.load();
+    if (video.autoplay) video.play().catch(() => {});
+  } catch (error) { console.error('Unable to load portfolio video', error); }
+});
+</script>
+</body>
+</html>
